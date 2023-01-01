@@ -1,7 +1,10 @@
 import sys
 from enum import Enum
 
-TokenType = Enum("TokenType", ['LEFT_PAREN', 'RIGHT_PAREN', 'LEFT_BRACE', 'RIGHT_BRACE', 'COMMA', 'DOT', 'MINUS', 'PLUS', 'SEMICOLON', 'SLASH', 'STAR', 'BANG', 'BANG_EQUAL', 'EQUAL', 'EQUAL_EQUAL', 'GREATER', 'GREATER_EQUAL', 'LESS', 'LESS_EQUAL', 'IDENTIFIER', 'STRING', 'NUMBER', 'AND', 'CLASS', 'ELSE', 'FALSE', 'FUN', 'FOR', 'IF', 'NIL', 'OR', 'PRINT', 'RETURN', 'SUPER', 'self', 'TRUE', 'VAR', 'WHILE', 'EOF'])
+TokenType = Enum("TokenType", ['LEFT_PAREN', 'RIGHT_PAREN', 'LEFT_BRACE', 'RIGHT_BRACE', 'COMMA', 'DOT', 'MINUS', 'PLUS', 
+'SEMICOLON', 'SLASH', 'STAR', 'BANG', 'BANG_EQUAL', 'EQUAL', 'EQUAL_EQUAL', 'GREATER', 'GREATER_EQUAL', 'LESS', 'LESS_EQUAL', 
+'IDENTIFIER', 'STRING', 'NUMBER', 'AND', 'CLASS', 'ELSE', 'FALSE', 'FUN', 'FOR', 'IF', 'NIL', 'OR', 'PRINT', 'RETURN', 'SUPER', 
+'TRUE', 'VAR', 'WHILE', 'EOF'])
 
 class Token:
     def __init__(self, type_, lexeme: str, literal, line):
@@ -61,15 +64,30 @@ class Scanner:
                 while (self.peek() != "\n" and not self.isAtEnd()):
                     _ = self.advance()
             else:
-                self.addToken1(TokenType.SLASH)
+                self.addToken(TokenType.SLASH)
         elif c in [" ", "\r", "\t"]:
             pass
         elif c == "\n":
             self.line += 1
             pass
+        elif c == "\"":
+            while (self.peek() != "\"" and not self.isAtEnd()):
+                if self.peek() == "\n":
+                    self.line += 1
+                self.advance()
+
+                if self.isAtEnd():
+                    Lox.error(self.line, "Unterminated string.")
+                    return
+            self.advance()
+            value = self.source[self.start + 1: self.current - 1]
+            self.addToken2(TokenType.STRING, value)
 
         else:
-            Lox.error(self.line, "Unexpected character.")
+            if self.isDigit(c):
+                self.number()
+            else:
+                Lox.error(self.line, "Unexpected character.")
     
     def match(self, expected):
         if self.isAtEnd():
@@ -87,8 +105,18 @@ class Scanner:
     def advance(self):
         self.current += 1
         return self.source[self.current - 1]
+    def isDigit(self, c):
+        return c >= '0' and c <= '9' 
 
-    def addToken1(self, type_):
+    def number(self):
+        while (self.isDigit(self.peek())):
+            self.advance()
+        if self.peek() == "." and self.isDigit(self.peekNext()):
+            self.advance()
+            while self.isDigit(self.peek()):
+                self.advance()
+        self.addToken2(TokenType.NUMBER, float(self.source[self.start:self.current]))
+    def addToken(self, type_):
         self.addToken2(type_, None)
 
     def addToken2(self, type_, literal):
@@ -99,54 +127,46 @@ class Lox:
     def __init__(self):
         self.hadError = False
 
-    @classmethod
     def main(self):
         args = sys.argv
         args.pop(0)
-
+        print(args)
         if len(args) > 1:
             print("Usage: jlox [script]")
             exit()
         elif len(args) == 1:
-            self.runFile(args[0])
+            self.runFile(path=args[0])
         else:
             self.runPrompt()
 
     def runFile(self, path: str):
-        try:
-            bytes_ = open(path, "r")
-            self.run(bytes_)
-        except:
-            raise Exception("IOException")
-
+        bytes_ = open(path, "r").read()
+        self.run(bytes_)
     def runPrompt(self):
-        try:
-            while True:
-                line = input("> ")
-                if line == "":
-                    break
-                self.run(line);
-                self.hadError = False
-        except:
-            raise Exception("IOException")
+        while True:
+            line = input("> ")
+            if line == "":
+                break
+            self.run(line)
+            self.hadError = False
 
     def run(self, source: str):
-        scanner = Scanner(source);
-        tokens = scanner.scanTokens();
+        scanner = Scanner(source)
+        tokens = scanner.scanTokens()
 
         for token in tokens:
-            print(token)
+            print(token.type_)
         
         if self.hadError:
             exit()
 
     @classmethod
     def error(self, line: int, message: str):
-        self.report(line, "", message);
+        self.report(line, "", message)
 
     def report(self, line: int, where: str, message: str):
         print(f"[line " + line + "] Error" + where + ": " + message)
         hadError = True
 
-
-Lox.main()
+l = Lox()
+l.main()
