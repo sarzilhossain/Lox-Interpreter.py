@@ -4,7 +4,7 @@ from enum import Enum
 TokenType = Enum("TokenType", ['LEFT_PAREN', 'RIGHT_PAREN', 'LEFT_BRACE', 'RIGHT_BRACE', 'COMMA', 'DOT', 'MINUS', 'PLUS', 
 'SEMICOLON', 'SLASH', 'STAR', 'BANG', 'BANG_EQUAL', 'EQUAL', 'EQUAL_EQUAL', 'GREATER', 'GREATER_EQUAL', 'LESS', 'LESS_EQUAL', 
 'IDENTIFIER', 'STRING', 'NUMBER', 'AND', 'CLASS', 'ELSE', 'FALSE', 'FUN', 'FOR', 'IF', 'NIL', 'OR', 'PRINT', 'RETURN', 'SUPER', 
-'TRUE', 'VAR', 'WHILE', 'EOF'])
+'THIS', 'TRUE', 'VAR', 'WHILE', 'EOF'])
 
 class Token:
     def __init__(self, type_, lexeme: str, literal, line):
@@ -82,10 +82,11 @@ class Scanner:
             self.advance()
             value = self.source[self.start + 1: self.current - 1]
             self.addToken2(TokenType.STRING, value)
-
         else:
             if self.isDigit(c):
                 self.number()
+            elif self.isAlpha(c):
+                self.identifier()
             else:
                 Lox.error(self.line, "Unexpected character.")
     
@@ -105,6 +106,7 @@ class Scanner:
     def advance(self):
         self.current += 1
         return self.source[self.current - 1]
+
     def isDigit(self, c):
         return c >= '0' and c <= '9' 
 
@@ -116,6 +118,43 @@ class Scanner:
             while self.isDigit(self.peek()):
                 self.advance()
         self.addToken2(TokenType.NUMBER, float(self.source[self.start:self.current]))
+    
+    def isAlpha(self, c: str):
+        return (c >= 'a' and c <= 'z') or \
+        (c >= 'A' and c <= 'Z') or \
+            c == '_'
+
+    def isAlphaNumeric(self, c: str):
+        return self.isAlpha(c) or self.isDigit(c)
+
+    def identifier(self):
+        keywords = {
+            "and": TokenType.AND,
+            "class": TokenType.CLASS,
+            "else": TokenType.ELSE,
+            "false": TokenType.FALSE,
+            "for": TokenType.FOR,
+            "fun": TokenType.FUN,
+            "if": TokenType.IF,
+            "nil": TokenType.NIL,
+            "or": TokenType.OR,
+            "print": TokenType.PRINT,
+            "return": TokenType.RETURN,
+            "super": TokenType.SUPER,
+            "this": TokenType.THIS,
+            "true": TokenType.TRUE,
+            "var": TokenType.VAR,
+            "while": TokenType.WHILE
+        }
+        while self.isAlphaNumeric(self.peek()):
+            self.advance()
+        text = self.source[self.start: self.current]
+        if text in keywords.keys():
+            type_ = keywords[text]
+        else:
+            type_ = TokenType.IDENTIFIER
+        self.addToken(type_)
+
     def addToken(self, type_):
         self.addToken2(type_, None)
 
